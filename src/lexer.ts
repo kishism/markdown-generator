@@ -2,7 +2,8 @@
 
 export type Token = 
     | { type: "heading"; level: number; content: string }
-    | { type: "paragraph"; content: string };
+    | { type: "paragraph"; content: string }
+    | { type: "image"; alt: string; src: string }
 
 function tokenize(markdown: string): Token[] {
     const lines = markdown.split(/\r?\n/);
@@ -23,15 +24,32 @@ function tokenize(markdown: string): Token[] {
             continue;
         }
 
-        const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+        const handled = handleToken(trimmed);
+        if (!handled) {
+            buffer.push(trimmed);
+        }
+    }
+
+    function handleToken(line: string) {
+        const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
         if (headingMatch && headingMatch[1] && headingMatch[2]) {
             flushParagraph();
             const level = headingMatch[1].length;
             const content = headingMatch[2];
             tokens.push({ type: "heading", level, content });
-        } else {
-            buffer.push(trimmed);
+            return true;
         }
+
+        const imageMatch = line.match(/!\[(.*?)]\((.*?)\)/);
+        if (imageMatch && imageMatch[1] && imageMatch[2]) {
+            flushParagraph();
+            const alt = imageMatch[1];
+            const src = imageMatch[2];
+            tokens.push({ type: "image", src, alt });
+            return true;
+        }
+
+        return false;
     }
 
     flushParagraph();

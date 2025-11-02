@@ -4,10 +4,13 @@ import type { Token } from "./lexer";
 
 export interface Node {
     type: 
-        "Document" | "Heading" | "Paragraph";
+        "Document" | "Heading" | "Paragraph" | "Image";
     children?: Node[]
     level?: number;
     content?: string;
+
+    alt?: string;
+    src?: string;
 }
 
 function parse(tokens: Token[]): Node {
@@ -28,6 +31,12 @@ function parse(tokens: Token[]): Node {
                 type: "Paragraph",
                 content: token.content,
             });
+        } else if (token.type === 'image') {
+            root.children!.push({
+                type: "Image",
+                alt: token.alt,
+                src: token.src,
+            })
         }
     }
 
