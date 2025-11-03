@@ -8,8 +8,18 @@ const { tokenize } = require('./lexer');
 const { parse } = require("./parser");
 const { nodeToHTML } = require('./emitter');
 
-const mdPath = path.join(__dirname, '../projects/example.md');
-const markdown = fs.readFileSync(mdPath, 'utf-8');
+const projectDir = path.join(__dirname, "../projects");
+
+const distDir = path.join(__dirname, "../dist");
+if (!fs.existsSync(distDir)) fs.mkdirSync(distDir);
+
+const mdFiles: string[] = fs.readdirSync(projectDir).filter((f: string) => f.endsWith(".md"));
+if (mdFiles.length === 0) throw new Error("No Markdown file found");
+
+const mdFile = mdFiles[0];
+if (!mdFile) throw new Error("Markdown file is empty.")
+const markdown = fs.readFileSync(path.join(projectDir, mdFile), "utf-8")
+console.log(markdown)
 
 const tokens: Token[] = tokenize(markdown);
 console.log("Tokenizing..\n", tokens);
@@ -17,7 +27,7 @@ console.log("Tokenizing..\n", tokens);
 const ast = parse(tokens);
 console.log("Constructing AST\n", JSON.stringify(ast, null, 2))
 
-const customTemplatePathFile = path.join(__dirname, "../projects")
+const customTemplatePathFile = path.join(__dirname, "../projects");
 const files: string[] = fs.readdirSync(customTemplatePathFile);
 let atomTemplateFile = files.find((f: string) => f.endsWith(".html"));
 
@@ -106,8 +116,7 @@ if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir);
 }
 
-const mdFileName = "example.md"; // this needs to be dynamically detected
-const outputFileName = mdFileName.replace(/\.md$/, ".html");
+const outputFileName = mdFile.replace(/\.md$/, ".html");
 const outputPath = path.join(outputDir, outputFileName);
 fs.writeFileSync(outputPath, html)
 
