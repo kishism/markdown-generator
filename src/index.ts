@@ -9,115 +9,112 @@ const { parse } = require("./parser");
 const { nodeToHTML } = require('./emitter');
 
 const projectDir = path.join(__dirname, "../projects");
-
 const distDir = path.join(__dirname, "../dist");
 if (!fs.existsSync(distDir)) fs.mkdirSync(distDir);
 
-const mdFiles: string[] = fs.readdirSync(projectDir).filter((f: string) => f.endsWith(".md"));
-if (mdFiles.length === 0) throw new Error("No Markdown file found");
+// -- Parse Front Matter and Validate Template
+function parseFrontMatter(markdown: string) {
+  const match = markdown.match(/^---\s*([\s\S]+?)\s*---/);
+  if (!match) 
+    return {
+      metadata: {}, 
+      content: markdown 
+    };
 
-const mdFile = mdFiles[0];
-if (!mdFile) throw new Error("Markdown file is empty.")
-const markdown = fs.readFileSync(path.join(projectDir, mdFile), "utf-8")
-console.log(markdown)
+    const rawRead = match[1];
+    const metadata: Record<string, string> = {};
+    rawRead?.split(/\r?\n/).forEach(line => {
+      const [key, ...rest] = line.split(":");
+      if (key && rest.length > 0) {
+        metadata[key.trim()] = rest.join(":").trim();
+      }
+    });
 
-const tokens: Token[] = tokenize(markdown);
-console.log("Tokenizing..\n", tokens);
-
-const ast = parse(tokens);
-console.log("Constructing AST\n", JSON.stringify(ast, null, 2))
-
-const customTemplatePathFile = path.join(__dirname, "../projects");
-const files: string[] = fs.readdirSync(customTemplatePathFile);
-let atomTemplateFile = files.find((f: string) => f.endsWith(".html"));
-
-let atomTemplate: string = "";
-
-if (atomTemplateFile) {
-    try {
-        atomTemplate = fs.readFileSync(
-            path.join(customTemplatePathFile, atomTemplateFile),
-            "utf-8"
-        );
-    } catch {
-        atomTemplate = "";
-    }
+    const content = markdown.slice(match[0].length).trim();
+    return { metadata, content };
 }
 
-const validateTemplate = 
-   (atomTemplate.includes("<html>") || atomTemplate.includes("<!DOCTYPE html>")) &&
-    atomTemplate.includes("<head>") && 
-    atomTemplate.includes("<body>");
-
-let html = "";
-
-if (validateTemplate) {
-    html = atomTemplate.replace(
-        /<body.*?>[\s\S]*<\/body>/i,
-    `<body>\n${nodeToHTML(ast)}\n</body>`
-    )
-} else {
-html = `
+function getDefaultTemplate(content: string) {
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>My Blog Post</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f7f7f7;
-      color: #333;
-      display: flex;
-      justify-content: center; 
-      padding-top: 50px;
-    }
-
-    .content {
-      max-width: 700px; 
-      background-color: #fff;
-      padding: 2rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border-radius: 8px;
-    }
-
-    h1, h2, h3, h4, h5, h6 {
-      font-weight: 600;
-      margin-top: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    p {
-      line-height: 1.6;
-      margin-bottom: 1rem;
-    }
-
-    img {
-      max-width: 100%;
-      display: block;
-      margin: 1rem 0;
-      border-radius: 4px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>My Blog Post</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f7f7f7;
+    color: #333;
+    display: flex;
+    justify-content: center; 
+    padding-top: 50px;
+  }
+  .content {
+    max-width: 700px; 
+    background-color: #fff;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-radius: 8px;
+  }
+  h1,h2,h3,h4,h5,h6 { font-weight: 600; margin-top: 1.5rem; margin-bottom: 1rem; }
+  p { line-height: 1.6; margin-bottom: 1rem; }
+  img { max-width: 100%; display: block; margin: 1rem 0; border-radius: 4px; }
+</style>
 </head>
 <body>
-  <div class="content">
-    ${nodeToHTML(ast)}
-  </div>
+<div class="content">
+  ${content}
+</div>
 </body>
-</html>
-`;
+</html>`;
 }
 
-const outputDir = path.join(__dirname, '../dist');
-if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir);
+function validateTemplate(template: string) {
+  return (
+      (template.includes("<html>") || template.includes("<!DOCTYPE html>")) &&
+      template.includes("<head>") &&
+      template.includes("<body>")
+  );
 }
 
-const outputFileName = mdFile.replace(/\.md$/, ".html");
-const outputPath = path.join(outputDir, outputFileName);
-fs.writeFileSync(outputPath, html)
+// --- Compiler Logic ---
+const mdFiles = fs.readdirSync(projectDir).filter((f: string) => f.endsWith(".md"));
+if (mdFiles.length === 0) throw new Error("No Markdown file found");
 
-console.log(`HTML successfully generated at ${outputPath}`);
+for (const mdFile of mdFiles) {
+    if (!mdFile) continue;
+
+    const markdownRaw = fs.readFileSync(path.join(projectDir, mdFile), "utf-8");
+    const { metadata, content } = parseFrontMatter(markdownRaw);
+
+    const tokens: Token[] = tokenize(content);
+    const ast = parse(tokens);
+    const htmlFragment = nodeToHTML(ast);
+
+    let atomTemplate = "";
+    if (metadata.template) {
+        const templatePath = path.join(projectDir, metadata.template);
+        if (fs.existsSync(templatePath)) {
+            atomTemplate = fs.readFileSync(templatePath, "utf-8");
+        }
+    }
+
+    let finalHTML = "";
+    if (atomTemplate && validateTemplate(atomTemplate)) {
+        finalHTML = atomTemplate.replace(
+            /<body.*?>[\s\S]*<\/body>/i,
+            `<body>\n${htmlFragment}\n</body>`
+        );
+    } else {
+        finalHTML = getDefaultTemplate(htmlFragment);
+    }
+
+    const outputFileName = mdFile.replace(/\.md$/, ".html");
+    const outputPath = path.join(distDir, outputFileName);
+    fs.writeFileSync(outputPath, finalHTML, "utf-8");
+
+    console.log(`> Generated ${outputFileName} using template "${metadata.template || "default"}"`);
+}
