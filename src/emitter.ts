@@ -13,9 +13,21 @@ const visitors: VisitorMap = {
     Link: (n: Node) => `<a href="${n.href ?? '' }"> ${n.text ?? ''} </a>`,
     UL: (n: Node) => `<ul>\n${n.children?.map(nodeToHTML).join('\n') ?? ''}\n</ul>`,
     OL: (n: Node) => `<ol>\n${n.children?.map(nodeToHTML).join('\n') ?? ''}\n</ol>`,
-    LI: (n: Node) => `<li>${n.content ?? ''}</li>`
+    LI: (n: Node) => `<li>${n.content ?? ''}</li>`,
+    CodeBlock: (n: Node) => {
+        const langClass = n.lang ? ` class="language-${n.lang}"` : "";
+        return `<pre><code${langClass}>${escapeHTML(n.content ?? "")}</code></pre>`;
+    },
 };
 
+function escapeHTML(str: string): string {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+}
+  
 function nodeToHTML(node: Node): string {
     if (node.type === 'Document') {
         return node.children?.map(nodeToHTML).join('\n') ?? '';

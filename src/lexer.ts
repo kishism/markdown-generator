@@ -6,7 +6,8 @@ export type Token =
     | { type: "image"; alt: string; src: string }
     | { type: "link"; href: string; text: string }
     | { type: "ul"; items: string[] }
-    | { type: "ol"; items: string[] };
+    | { type: "ol"; items: string[] }
+    | { type: "code_block"; content: string; lang?: string };
 
 function tokenize(markdown: string): Token[] {
     const lines = markdown.split(/\r?\n/);
@@ -14,6 +15,10 @@ function tokenize(markdown: string): Token[] {
     let buffer: string[] = [];
     let listBuffer: string[] = [];
     let listType: "ul" | "ol" | null = null;
+
+    let inCodeBlock = false;
+    let codeBuffer: string[] = [];
+    let codeLang: string | undefined;
 
     const flushList = () => {
         if (listBuffer.length > 0 && listType) {
@@ -31,6 +36,29 @@ function tokenize(markdown: string): Token[] {
     };
 
     for (const line of lines) {
+        const codeFence = line.match(/^```(\w+)?/);
+        if (codeFence) {
+            if (!inCodeBlock) {
+                inCodeBlock = true;
+                codeLang = codeFence[1];
+            } else {
+                inCodeBlock = false;
+                tokens.push({
+                    type: "code_block",
+                    content: codeBuffer.join("\n"),
+                    ...(codeLang ? { lang: codeLang } : {}),
+                });
+                codeBuffer = [];
+                codeLang = undefined;
+            }
+            continue;
+        }
+
+        if (inCodeBlock) {
+            codeBuffer.push(line);
+            continue;
+        }
+
         const trimmed = line.trim();
         if (!trimmed) {
             flushParagraph();
@@ -47,6 +75,7 @@ function tokenize(markdown: string): Token[] {
         const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
         if (headingMatch && headingMatch[1] && headingMatch[2]) {
             flushParagraph();
+            flushList();
             const level = headingMatch[1].length;
             const content = headingMatch[2];
             tokens.push({ type: "heading", level, content });
@@ -56,6 +85,7 @@ function tokenize(markdown: string): Token[] {
         const imageMatch = line.match(/!\[(.*?)]\((.*?)\)/);
         if (imageMatch && imageMatch[1] && imageMatch[2]) {
             flushParagraph();
+            flushList();
             const alt = imageMatch[1];
             const src = imageMatch[2];
             tokens.push({ type: "image", src, alt });
@@ -65,8 +95,9 @@ function tokenize(markdown: string): Token[] {
         const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
         if (linkMatch && linkMatch[1] && linkMatch[2]) {
             flushParagraph();
-            const href = linkMatch[1];
-            const text = linkMatch[2];
+            flushList();
+            const text = linkMatch[1];
+            const href = linkMatch[2];
             tokens.push({ type: "link", href, text });
             return true;
         }

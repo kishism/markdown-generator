@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 import type { Token } from './lexer';
+import type { Node } from './parser';
 const { tokenize } = require('./lexer');
 const { parse } = require("./parser");
 const { nodeToHTML } = require('./emitter');
@@ -26,7 +27,7 @@ function parseFrontMatter(markdown: string) {
     rawRead?.trim().split(/\r?\n/).forEach(line => {
       const [key, ...rest] = line.split(":");
       if (key && rest.length === 0) {
-        console.warn(`> Ignoring invalid frontmatter line: "${line}"`);
+        console.warn(`→ Ignoring invalid frontmatter line: "${line}"`);
     }
     
       if (key && rest.length > 0) {
@@ -85,11 +86,21 @@ function validateTemplate(template: string) {
   );
 }
 
+function hasCodeBlocks(node: Node): boolean {
+  if (node.type === "CodeBlock") return true;
+  if ("children" in node && Array.isArray(node.children)) {
+      return node.children.some(hasCodeBlocks);
+  }
+
+  return false;
+}
+
 // --- Compiler Logic ---
 const mdFiles = fs.readdirSync(projectDir).filter((f: string) => f.endsWith(".md"));
-if (mdFiles.length === 0) throw new Error("No Markdown file found");
+if (mdFiles.length === 0) throw new Error("→ No Markdown file found");
 
 for (const mdFile of mdFiles) {
+  try {
     if (!mdFile) continue;
 
     const markdownRaw = fs.readFileSync(path.join(projectDir, mdFile), "utf-8");
@@ -103,6 +114,7 @@ for (const mdFile of mdFiles) {
     const tokens: Token[] = tokenize(content);
     const ast = parse(tokens);
     const htmlFragment = nodeToHTML(ast);
+    const includePrism = hasCodeBlocks(ast);
 
     let atomTemplate = "";
     if (metadata.template) {
@@ -112,22 +124,37 @@ for (const mdFile of mdFiles) {
         }
     }
 
+    let prismIncludes = "";
+  if (includePrism) {
+      prismIncludes = `
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/themes/prism.css">
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/prism.js"></script>`;
+  }
+
     let finalHTML = "";
     if (atomTemplate && validateTemplate(atomTemplate)) {
         finalHTML = atomTemplate.replace(
-            /<body.*?>[\s\S]*<\/body>/i,
-            `<body>\n${htmlFragment}\n</body>`
+          /<head.*?>/i,
+          (match) => `${match}\n${prismIncludes}`
+        ).replace(
+          /<body.*?>[\s\S]*<\/body>/i,
+          `<body>\n${htmlFragment}\n</body>`
         );
     } else {
-        finalHTML = getDefaultTemplate(htmlFragment);
+        finalHTML = getDefaultTemplate(prismIncludes + htmlFragment);
     }
 
     const outputFileName = mdFile.replace(/\.md$/, ".html");
     const outputPath = path.join(distDir, outputFileName);
     if (fs.existsSync(outputPath)) {
-      console.warn(`> Overwriting existing file: ${outputFileName}`);
+      console.warn(`→ Overwriting existing file: ${outputFileName}`);
     }
-    fs.writeFileSync(outputPath, finalHTML, "utf-8");
 
-    console.log(`> Generated ${outputFileName} using template "${metadata.template || "default"}"`);
+    fs.writeFileSync(outputPath, finalHTML, "utf-8");
+    console.log(`→ Generated ${outputFileName} using template "${metadata.template || "default"}"`);
+  } catch (err) {
+    console.log(`→ Failed to compile ${mdFile}:`, err);
+  }
+
+  console.log(`→ Compilation completed. ${mdFiles.length} markdown file(s) processed.`)
 }

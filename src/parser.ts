@@ -10,7 +10,8 @@ export interface Node {
         | "Link"
         | "UL"
         | "OL"
-        | "LI";
+        | "LI"
+        | "CodeBlock";
 
     children?: Node[]
 
@@ -25,6 +26,9 @@ export interface Node {
     // Link
     href?: string;
     text?: string;
+
+    // Codeblock
+    lang?: string | undefined;
 }
 
 function parse(tokens: Token[]): Node {
@@ -72,6 +76,12 @@ function parse(tokens: Token[]): Node {
                     type: "LI",
                     content: item
                 }))
+            });
+        } else if (token.type == 'code_block') {
+            root.children!.push({
+                type: "CodeBlock",
+                content: token.content,
+                lang: token.lang,
             });
         }
     }
