@@ -5,11 +5,23 @@ export type Token =
     | { type: "paragraph"; content: string }
     | { type: "image"; alt: string; src: string }
     | { type: "link"; href: string; text: string }
+    | { type: "ul"; items: string[] }
+    | { type: "ol"; items: string[] };
 
 function tokenize(markdown: string): Token[] {
     const lines = markdown.split(/\r?\n/);
     const tokens: Token[] = [];
     let buffer: string[] = [];
+    let listBuffer: string[] = [];
+    let listType: "ul" | "ol" | null = null;
+
+    const flushList = () => {
+        if (listBuffer.length > 0 && listType) {
+            tokens.push({ type: listType, items: listBuffer });
+            listBuffer = [];
+            listType = null;
+        }
+    };
 
     const flushParagraph = () => {
         if (buffer.length > 0) {
@@ -59,10 +71,28 @@ function tokenize(markdown: string): Token[] {
             return true;
         }
 
+        const ulMatch = line.match(/^[-*+]\s+(.*)$/);
+        if (ulMatch?.[1]) {
+            if (listType !== "ul") flushList();
+            listType = "ul";
+            listBuffer.push(ulMatch[1]);
+            return true; 
+        }
+
+        const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
+        if (olMatch?.[2]) {
+            if (listType !== "ol") flushList();
+            listType = "ol";
+            listBuffer.push(olMatch[2]);
+            return true; 
+        }
+
+        flushList();
         return false;
     }
 
     flushParagraph();
+    flushList(); 
     return tokens;
 }
 

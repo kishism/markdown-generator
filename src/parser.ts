@@ -3,8 +3,15 @@
 import type { Token } from "./lexer";
 
 export interface Node {
-    type: 
-        "Document" | "Heading" | "Paragraph" | "Image" | "Link";
+    type: "Document" 
+        | "Heading" 
+        | "Paragraph" 
+        | "Image" 
+        | "Link"
+        | "UL"
+        | "OL"
+        | "LI";
+
     children?: Node[]
 
     // Heading & Paragraph
@@ -49,6 +56,22 @@ function parse(tokens: Token[]): Node {
                 type: "Link",
                 href: token.href,
                 text: token.text,
+            });
+        } else if (token.type === 'ul') {
+            root.children!.push({
+                type: "UL",
+                children: token.items.map(item => ({
+                    type: "LI",
+                    content: item
+                }))
+            });
+        } else if (token.type === 'ol') {
+            root.children!.push({
+                type: "OL",
+                children: token.items.map(item => ({
+                    type: "LI",
+                    content: item
+                }))
             });
         }
     }

@@ -10,7 +10,10 @@ const visitors: VisitorMap = {
     Heading: (n: Node) => `<h${n.level ?? 1}>${n.content ?? ''}</h${n.level ?? 1}>`,
     Paragraph: (n: Node) => `<p>${n.content ?? ''}</p>`,
     Image: (n: Node) => `<img src="${n.src ?? ''}" alt="${n.alt ?? ''}" />`,
-    Link: (n: Node) => `<a href="${n.href ?? '' }"> ${n.text ?? ''} </a>`
+    Link: (n: Node) => `<a href="${n.href ?? '' }"> ${n.text ?? ''} </a>`,
+    UL: (n: Node) => `<ul>\n${n.children?.map(nodeToHTML).join('\n') ?? ''}\n</ul>`,
+    OL: (n: Node) => `<ol>\n${n.children?.map(nodeToHTML).join('\n') ?? ''}\n</ol>`,
+    LI: (n: Node) => `<li>${n.content ?? ''}</li>`
 };
 
 function nodeToHTML(node: Node): string {
