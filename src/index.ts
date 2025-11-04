@@ -23,8 +23,12 @@ function parseFrontMatter(markdown: string) {
 
     const rawRead = match[1];
     const metadata: Record<string, string> = {};
-    rawRead?.split(/\r?\n/).forEach(line => {
+    rawRead?.trim().split(/\r?\n/).forEach(line => {
       const [key, ...rest] = line.split(":");
+      if (key && rest.length === 0) {
+        console.warn(`> Ignoring invalid frontmatter line: "${line}"`);
+    }
+    
       if (key && rest.length > 0) {
         metadata[key.trim()] = rest.join(":").trim();
       }
@@ -73,10 +77,11 @@ function getDefaultTemplate(content: string) {
 }
 
 function validateTemplate(template: string) {
+  const lower = template.toLowerCase();
   return (
-      (template.includes("<html>") || template.includes("<!DOCTYPE html>")) &&
-      template.includes("<head>") &&
-      template.includes("<body>")
+      (lower.includes("<html>") || lower.includes("<!DOCTYPE html>")) &&
+      lower.includes("<head>") &&
+      lower.includes("<body>")
   );
 }
 
@@ -88,6 +93,11 @@ for (const mdFile of mdFiles) {
     if (!mdFile) continue;
 
     const markdownRaw = fs.readFileSync(path.join(projectDir, mdFile), "utf-8");
+    if (!markdownRaw.trim()) {
+      console.warn(`> Skipping empty file: ${mdFile}`);
+      continue;
+    }
+    
     const { metadata, content } = parseFrontMatter(markdownRaw);
 
     const tokens: Token[] = tokenize(content);
@@ -96,7 +106,7 @@ for (const mdFile of mdFiles) {
 
     let atomTemplate = "";
     if (metadata.template) {
-        const templatePath = path.join(projectDir, metadata.template);
+        const templatePath = path.join(projectDir, path.basename(metadata.template));
         if (fs.existsSync(templatePath)) {
             atomTemplate = fs.readFileSync(templatePath, "utf-8");
         }
@@ -114,6 +124,9 @@ for (const mdFile of mdFiles) {
 
     const outputFileName = mdFile.replace(/\.md$/, ".html");
     const outputPath = path.join(distDir, outputFileName);
+    if (fs.existsSync(outputPath)) {
+      console.warn(`> Overwriting existing file: ${outputFileName}`);
+    }
     fs.writeFileSync(outputPath, finalHTML, "utf-8");
 
     console.log(`> Generated ${outputFileName} using template "${metadata.template || "default"}"`);
