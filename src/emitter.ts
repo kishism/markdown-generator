@@ -9,7 +9,8 @@ type VisitorMap = {
 const visitors: VisitorMap = {
     Heading: (n: Node) => `<h${n.level ?? 1}>${n.content ?? ''}</h${n.level ?? 1}>`,
     Paragraph: (n: Node) => `<p>${n.content ?? ''}</p>`,
-    Image: (n: Node) => `<img src="${n.src ?? ''}" alt="${n.alt ?? ''}" />`
+    Image: (n: Node) => `<img src="${n.src ?? ''}" alt="${n.alt ?? ''}" />`,
+    Link: (n: Node) => `<a href="${n.href ?? '' }"> ${n.text ?? ''} </a>`
 };
 
 function nodeToHTML(node: Node): string {

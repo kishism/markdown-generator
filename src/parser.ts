@@ -4,13 +4,20 @@ import type { Token } from "./lexer";
 
 export interface Node {
     type: 
-        "Document" | "Heading" | "Paragraph" | "Image";
+        "Document" | "Heading" | "Paragraph" | "Image" | "Link";
     children?: Node[]
+
+    // Heading & Paragraph
     level?: number;
     content?: string;
 
+    // Image
     alt?: string;
     src?: string;
+
+    // Link
+    href?: string;
+    text?: string;
 }
 
 function parse(tokens: Token[]): Node {
@@ -36,7 +43,13 @@ function parse(tokens: Token[]): Node {
                 type: "Image",
                 alt: token.alt,
                 src: token.src,
-            })
+            });
+        } else if (token.type === 'link') {
+            root.children!.push({
+                type: "Link",
+                href: token.href,
+                text: token.text,
+            });
         }
     }
 
