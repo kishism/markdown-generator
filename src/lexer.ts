@@ -14,7 +14,8 @@ export type Token =
     | { type: "link"; href: string; text: string }
     | { type: "ul"; items: string[] }
     | { type: "ol"; items: string[] }
-    | { type: "code_block"; content: string; lang?: string };
+    | { type: "code_block"; content: string; lang?: string }
+    | { type: "hr" };
 
 function tokenize(markdown: string): Token[] {
     const lines = markdown.split(/\r?\n/);
@@ -128,6 +129,14 @@ function tokenize(markdown: string): Token[] {
             listType = "ol";
             listBuffer.push(olMatch[2]);
             return true; 
+        }
+
+        const hrMatch = line.match(/^\\hr$/);
+        if (hrMatch) {
+            flushParagraph();
+            flushList();
+            tokens.push({ type: "hr" });
+            return true;
         }
 
         flushList();

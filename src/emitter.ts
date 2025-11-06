@@ -30,6 +30,7 @@ const visitors: VisitorMap = {
     Bold: (n: Node) => `<strong>${renderChildren(n)}</strong>`,
     Italic: (n: Node) => `<em>${renderChildren(n)}</em>`,
     Break: () => "<br>",
+    HR: () => "<hr>",
 };
 
 

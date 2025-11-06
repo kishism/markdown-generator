@@ -15,7 +15,8 @@ export interface Node {
         | "Text"
         | "Bold"
         | "Italic"
-        | "Break";
+        | "Break"
+        | "HR";
 
     children?: Node[]
 
@@ -119,6 +120,10 @@ function parse(tokens: Token[]): Node {
                     content: token.content,
                     lang: token.lang,
                 });
+                break;
+
+            case "hr":
+                root.children!.push({ type: "HR" });
                 break;
         }
     }
