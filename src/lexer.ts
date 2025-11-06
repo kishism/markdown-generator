@@ -1,8 +1,14 @@
 // src/lexer.ts
 
+export type InlineToken =
+    | { type: "text"; content: string }
+    | { type: "bold"; content: InlineToken[] }
+    | { type: "italic"; content: InlineToken[] }
+    | { type: "link"; href: string; content: InlineToken[] };
+
 export type Token = 
-    | { type: "heading"; level: number; content: string }
-    | { type: "paragraph"; content: string }
+    | { type: "heading"; level: number;  content: InlineToken[] }
+    | { type: "paragraph"; content: InlineToken[] }
     | { type: "image"; alt: string; src: string }
     | { type: "link"; href: string; text: string }
     | { type: "ul"; items: string[] }
@@ -30,7 +36,7 @@ function tokenize(markdown: string): Token[] {
 
     const flushParagraph = () => {
         if (buffer.length > 0) {
-            tokens.push({ type: "paragraph", content: buffer.join(" ") });
+            tokens.push({ type: "paragraph", content: parseInline(buffer.join(" ")) });
             buffer = [];
         }
     };
@@ -62,6 +68,7 @@ function tokenize(markdown: string): Token[] {
         const trimmed = line.trim();
         if (!trimmed) {
             flushParagraph();
+            flushList();
             continue;
         }
 
@@ -71,6 +78,10 @@ function tokenize(markdown: string): Token[] {
         }
     }
 
+    flushParagraph();
+    flushList();
+    return tokens;
+
     function handleToken(line: string) {
         const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
         if (headingMatch && headingMatch[1] && headingMatch[2]) {
@@ -78,7 +89,7 @@ function tokenize(markdown: string): Token[] {
             flushList();
             const level = headingMatch[1].length;
             const content = headingMatch[2];
-            tokens.push({ type: "heading", level, content });
+            tokens.push({ type: "heading", level, content: parseInline(headingMatch[2]) });
             return true;
         }
         
@@ -121,9 +132,60 @@ function tokenize(markdown: string): Token[] {
         flushList();
         return false;
     }
+}
 
-    flushParagraph();
-    flushList(); 
+function parseInline(text: string): InlineToken[] {
+    const tokens: InlineToken[] = [];
+    let i = 0;
+
+    while (i < text.length) {
+        if (text.slice(i, i + 2) === "**") {
+            const end = text.indexOf("**", i + 2);
+            if (end !== -1) {
+                tokens.push({ type: "bold", content: parseInline(text.slice(i + 2, end)) });
+                i = end + 2;
+                continue;
+            } else {
+                tokens.push({ type: "text", content: text.slice(i) });
+                break;
+            }
+        }
+
+        if (text[i] === "*") {
+            const end = text.indexOf("*", i + 1);
+            if (end !== -1) {
+                tokens.push({ type: "italic", content: parseInline(text.slice(i + 1, end)) });
+                i = end + 1;
+                continue;
+            } else {
+                tokens.push({ type: "text", content: text.slice(i) });
+                break;
+            }
+        }
+
+        if (text[i] === "[") {
+            const closeBracket = text.indexOf("]", i);
+            const openParen = text.indexOf("(", closeBracket);
+            const closeParen = text.indexOf(")", openParen);
+            if (closeBracket !== -1 && openParen === closeBracket + 1 && closeParen !== -1) {
+                const linkText = text.slice(i + 1, closeBracket);
+                const href = text.slice(openParen + 1, closeParen);
+                tokens.push({ type: "link", href, content: parseInline(linkText) });
+                i = closeParen + 1;
+                continue;
+            } else {
+                tokens.push({ type: "text", content: text.slice(i, i+1) });
+                i++;
+                continue;
+            }
+        }
+
+        let nextMarker = text.slice(i).search(/(\*\*|\*|\[)/);
+        if (nextMarker === -1) nextMarker = text.length - i;
+        tokens.push({ type: "text", content: text.slice(i, i + nextMarker) });
+        i += nextMarker;
+    }
+
     return tokens;
 }
 

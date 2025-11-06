@@ -4,21 +4,33 @@ import type { Node } from './parser';
 
 type VisitorMap = {
     [K in Exclude<Node['type'], 'Document'>]: (node: Node) => string;
-  };  
+};  
+
+function renderChildren(node: Node): string {
+    return node.children?.map(nodeToHTML).join('') ?? '';
+}
 
 const visitors: VisitorMap = {
-    Heading: (n: Node) => `<h${n.level ?? 1}>${n.content ?? ''}</h${n.level ?? 1}>`,
-    Paragraph: (n: Node) => `<p>${n.content ?? ''}</p>`,
+    Heading: (n: Node) => {
+        const level = Math.min(Math.max(n.level ?? 1, 1), 6);
+        return `<h${level}>${renderChildren(n)}</h${level}>`;
+    },
+
+    Paragraph: (n: Node) => `<p>${renderChildren(n)}</p>`,
     Image: (n: Node) => `<img src="${n.src ?? ''}" alt="${n.alt ?? ''}" />`,
-    Link: (n: Node) => `<a href="${n.href ?? '' }"> ${n.text ?? ''} </a>`,
+    Link: (n: Node) => `<a href="${n.href ?? ''}">${renderChildren(n)}</a>`,
     UL: (n: Node) => `<ul>\n${n.children?.map(nodeToHTML).join('\n') ?? ''}\n</ul>`,
     OL: (n: Node) => `<ol>\n${n.children?.map(nodeToHTML).join('\n') ?? ''}\n</ol>`,
-    LI: (n: Node) => `<li>${n.content ?? ''}</li>`,
+    LI: (n: Node) => `<li>${renderChildren(n)}</li>`,
     CodeBlock: (n: Node) => {
         const langClass = n.lang ? ` class="language-${n.lang}"` : "";
         return `<pre><code${langClass}>${escapeHTML(n.content ?? "")}</code></pre>`;
     },
+    Text: (n: Node) => escapeHTML(n.content ?? ""),
+    Bold: (n: Node) => `<strong>${renderChildren(n)}</strong>`,
+    Italic: (n: Node) => `<em>${renderChildren(n)}</em>`,
 };
+
 
 function escapeHTML(str: string): string {
     return str

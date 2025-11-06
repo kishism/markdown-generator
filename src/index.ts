@@ -125,11 +125,12 @@ for (const mdFile of mdFiles) {
     }
 
     let prismIncludes = "";
-  if (includePrism) {
-      prismIncludes = `
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/themes/prism.css">
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/prism.js"></script>`;
-  }
+    // Add tokens to choose themes in future
+    if (includePrism) {
+        prismIncludes = `
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/themes/prism.css">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/prism.js"></script>`;
+    }
 
     let finalHTML = "";
     if (atomTemplate && validateTemplate(atomTemplate)) {

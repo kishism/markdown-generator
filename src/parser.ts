@@ -1,6 +1,6 @@
 // src/parser.ts
 
-import type { Token } from "./lexer";
+import type { Token, InlineToken } from "./lexer";
 
 export interface Node {
     type: "Document" 
@@ -11,12 +11,17 @@ export interface Node {
         | "UL"
         | "OL"
         | "LI"
-        | "CodeBlock";
+        | "CodeBlock"
+        | "Text"
+        | "Bold"
+        | "Italic";
 
     children?: Node[]
 
     // Heading & Paragraph
     level?: number;
+
+    // Inline text
     content?: string;
 
     // Image
@@ -31,6 +36,21 @@ export interface Node {
     lang?: string | undefined;
 }
 
+function parseInlineTokens(inlines: InlineToken[]): Node[] {
+    return inlines.map(token => {
+        switch (token.type) {
+            case "text":
+                return { type: "Text", content: token.content };
+            case "bold":
+                return { type: "Bold", children: parseInlineTokens(token.content) };
+            case "italic":
+                return { type: "Italic", children: parseInlineTokens(token.content) };
+            case "link":
+                return { type: "Link", href: token.href, children: parseInlineTokens(token.content) };
+        }
+    });
+}
+
 function parse(tokens: Token[]): Node {
     const root: Node = {
         type: "Document",
@@ -38,51 +58,65 @@ function parse(tokens: Token[]): Node {
     };
 
     for (const token of tokens) {
-        if (token.type === "heading") {
-            root.children!.push({
-                type: "Heading",
-                level: token.level,
-                content: token.content,
-            });
-        } else if (token.type === 'paragraph') {
-            root.children!.push({
-                type: "Paragraph",
-                content: token.content,
-            });
-        } else if (token.type === 'image') {
-            root.children!.push({
-                type: "Image",
-                alt: token.alt,
-                src: token.src,
-            });
-        } else if (token.type === 'link') {
-            root.children!.push({
-                type: "Link",
-                href: token.href,
-                text: token.text,
-            });
-        } else if (token.type === 'ul') {
-            root.children!.push({
-                type: "UL",
-                children: token.items.map(item => ({
-                    type: "LI",
-                    content: item
-                }))
-            });
-        } else if (token.type === 'ol') {
-            root.children!.push({
-                type: "OL",
-                children: token.items.map(item => ({
-                    type: "LI",
-                    content: item
-                }))
-            });
-        } else if (token.type == 'code_block') {
-            root.children!.push({
-                type: "CodeBlock",
-                content: token.content,
-                lang: token.lang,
-            });
+        switch (token.type) {
+            case "heading":
+                root.children!.push({
+                    type: "Heading",
+                    level: token.level,
+                    children: parseInlineTokens(token.content),
+                });
+                break;
+
+            case "paragraph":
+                root.children!.push({
+                    type: "Paragraph",
+                    children: parseInlineTokens(token.content),
+                });
+                break;
+            
+            case "link":
+                root.children!.push({
+                    type: "Link",
+                    href: token.href,
+                    children: [{ type: "Text", content: token.text }],
+                });
+                break;
+
+            case "image":
+                root.children!.push({
+                    type: "Image",
+                    alt: token.alt,
+                    src: token.src,
+                });
+                break;
+
+            case "ul":
+                root.children!.push({
+                    type: "UL",
+                    children: token.items.map(item => ({
+                        type: "LI",
+                        children: parseInlineTokens([{ type: "text", content: item }])
+                    }))
+                });
+                break;
+
+            case "ol":
+                root.children!.push({
+                    type: "OL",
+                    children: token.items.map(item => ({
+                        type: "LI",
+                        children: parseInlineTokens([{ type: "text", content: item }])
+                    }))
+                });
+                break;
+
+            case "code_block":
+                root.children!.push({
+                    type: "CodeBlock",
+                    content: token.content,
+                    lang: token.lang,
+                });
+                break;
         }
     }
 
