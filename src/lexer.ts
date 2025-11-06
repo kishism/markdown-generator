@@ -4,7 +4,8 @@ export type InlineToken =
     | { type: "text"; content: string }
     | { type: "bold"; content: InlineToken[] }
     | { type: "italic"; content: InlineToken[] }
-    | { type: "link"; href: string; content: InlineToken[] };
+    | { type: "link"; href: string; content: InlineToken[] }
+    | { type: "break" };
 
 export type Token = 
     | { type: "heading"; level: number;  content: InlineToken[] }
@@ -180,7 +181,13 @@ function parseInline(text: string): InlineToken[] {
             }
         }
 
-        let nextMarker = text.slice(i).search(/(\*\*|\*|\[)/);
+        if (text.slice(i, i + 3) === "\\br") {
+            tokens.push({ type: "break" });
+            i += 3;
+            continue;
+        }
+
+        let nextMarker = text.slice(i).search(/(\*\*|\*|\[|\\br)/);
         if (nextMarker === -1) nextMarker = text.length - i;
         tokens.push({ type: "text", content: text.slice(i, i + nextMarker) });
         i += nextMarker;

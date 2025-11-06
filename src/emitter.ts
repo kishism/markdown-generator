@@ -29,6 +29,7 @@ const visitors: VisitorMap = {
     Text: (n: Node) => escapeHTML(n.content ?? ""),
     Bold: (n: Node) => `<strong>${renderChildren(n)}</strong>`,
     Italic: (n: Node) => `<em>${renderChildren(n)}</em>`,
+    Break: () => "<br>",
 };
 
 

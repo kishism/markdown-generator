@@ -14,7 +14,8 @@ export interface Node {
         | "CodeBlock"
         | "Text"
         | "Bold"
-        | "Italic";
+        | "Italic"
+        | "Break";
 
     children?: Node[]
 
@@ -47,6 +48,8 @@ function parseInlineTokens(inlines: InlineToken[]): Node[] {
                 return { type: "Italic", children: parseInlineTokens(token.content) };
             case "link":
                 return { type: "Link", href: token.href, children: parseInlineTokens(token.content) };
+            case "break":
+                return { type: "Break" };
         }
     });
 }
