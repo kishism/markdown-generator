@@ -80,7 +80,7 @@ function getDefaultTemplate(content: string) {
 function validateTemplate(template: string) {
   const lower = template.toLowerCase();
   return (
-      (lower.includes("<html>") || lower.includes("<!DOCTYPE html>")) &&
+      (lower.includes("<html>") || lower.includes("<!doctype html>")) &&
       lower.includes("<head>") &&
       lower.includes("<body>")
   );
@@ -120,7 +120,7 @@ for (const mdFile of mdFiles) {
     if (metadata.template) {
         const templatePath = path.join(projectDir, path.basename(metadata.template));
         if (fs.existsSync(templatePath)) {
-            atomTemplate = fs.readFileSync(templatePath, "utf-8");
+            atomTemplate = fs.readFileSync(templatePath, "utf8");
         }
     }
 
@@ -133,6 +133,7 @@ for (const mdFile of mdFiles) {
     }
 
     let finalHTML = "";
+
     if (atomTemplate && validateTemplate(atomTemplate)) {
         finalHTML = atomTemplate.replace(
           /<head.*?>/i,
