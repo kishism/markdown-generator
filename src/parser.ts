@@ -32,7 +32,6 @@ export interface Node {
 
     // Link
     href?: string;
-    text?: string;
 
     // Codeblock
     lang?: string | undefined;
@@ -78,14 +77,6 @@ function parse(tokens: Token[]): Node {
                 });
                 break;
             
-            case "link":
-                root.children!.push({
-                    type: "Link",
-                    href: token.href,
-                    children: [{ type: "Text", content: token.text }],
-                });
-                break;
-
             case "image":
                 root.children!.push({
                     type: "Image",

@@ -11,7 +11,6 @@ export type Token =
     | { type: "heading"; level: number;  content: InlineToken[] }
     | { type: "paragraph"; content: InlineToken[] }
     | { type: "image"; alt: string; src: string }
-    | { type: "link"; href: string; text: string }
     | { type: "ul"; items: string[] }
     | { type: "ol"; items: string[] }
     | { type: "code_block"; content: string; lang?: string }
@@ -102,16 +101,6 @@ function tokenize(markdown: string): Token[] {
             const alt = imageMatch[1];
             const src = imageMatch[2];
             tokens.push({ type: "image", src, alt });
-            return true;
-        }
-
-        const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
-        if (linkMatch && linkMatch[1] && linkMatch[2]) {
-            flushParagraph();
-            flushList();
-            const text = linkMatch[1];
-            const href = linkMatch[2];
-            tokens.push({ type: "link", href, text });
             return true;
         }
 
